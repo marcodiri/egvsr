@@ -51,7 +51,7 @@ class VSRSingle(L.LightningModule):
         n, t, c, lr_h, lr_w = lr_data.size()
         _, _, _, gt_h, gt_w = gt_data.size()
 
-        assert t > 2, "A temporal radius of at least 3 is needed"
+        assert t > 1, "A temporal radius of at least 2 is needed"
 
         # augment data for pingpong criterion
         if self.pp_crit is not None:
@@ -144,10 +144,14 @@ class VSRSingle(L.LightningModule):
         return (
             (
                 lr_data.view(-1, c, lr_h, lr_w),
-                F.interpolate(
-                    net_G_output_dict["hr_prev_warp"].view(-1, c, gt_h, gt_w),
-                    size=lr_data.shape[-2:],
-                    mode="bicubic",
+                (
+                    F.interpolate(
+                        (net_G_output_dict["hr_prev_warp"].view(-1, c, gt_h, gt_w)),
+                        size=lr_data.shape[-2:],
+                        mode="bicubic",
+                    )
+                    if "hr_prev_warp" in net_G_output_dict
+                    else net_G_output_dict["lr_prev_warp"].view(-1, c, lr_h, lr_w)
                 ),
                 F.interpolate(
                     gt_data.view(-1, c, gt_h, gt_w),
