@@ -15,6 +15,7 @@ trainer:
       log_model: True
       prefix: ''
       group: '4x64@CRF22'
+      # group: '4x64@lossless'
   callbacks:
     - class_path: ImageLog
     - class_path: ModelCheckpoint
@@ -65,6 +66,7 @@ model:
 data:
   hr_path: /home/DATASETS/BVI_DVC/frames_HQ/
   lr_path: /home/DATASETS/BVI_DVC/frames/frames_CRF_22
+  # lr_path: /home/DATASETS/BVI_DVC/frames/frames_lossless
   hr_path_filter: '1088'
   lr_path_filter: '544'
   validation_classes:

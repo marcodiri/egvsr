@@ -3,11 +3,12 @@ import torch.nn.functional as F
 
 from archs.arch_utils import (
     BaseGenerator,
-    backward_warp,
+    flow_warp,
     get_upsampling_func,
     space_to_depth,
 )
 from archs.flow_net import FNet
+from archs.spynet import SpyNet
 from archs.sr_net import SRNet
 
 
@@ -31,7 +32,8 @@ class FRNet(BaseGenerator):
         self.upsample_func = get_upsampling_func(self.scale, degradation)
 
         # define fnet & srnet
-        self.fnet = FNet(in_nc)
+        # self.fnet = FNet(in_nc)
+        self.fnet = SpyNet(load_path="pretrained/spynet_sintel_final-3d2a1287.pth")
         self.srnet = SRNet((scale**2 + 1) * in_nc, out_nc, nf, nb, scale)
 
     @property
@@ -62,15 +64,15 @@ class FRNet(BaseGenerator):
         lr_flow = self.fnet(lr_curr, lr_prev)
 
         # pad if size is not a multiple of 8
-        pad_h = lr_curr.size(2) - lr_curr.size(2) // 8 * 8
-        pad_w = lr_curr.size(3) - lr_curr.size(3) // 8 * 8
-        lr_flow_pad = F.pad(lr_flow, (0, pad_w, 0, pad_h), "reflect")
+        # pad_h = lr_curr.size(2) - lr_curr.size(2) // 8 * 8
+        # pad_w = lr_curr.size(3) - lr_curr.size(3) // 8 * 8
+        # lr_flow_pad = F.pad(lr_flow, (0, pad_w, 0, pad_h), "reflect")
 
         # upsample lr flow
-        hr_flow = self.scale * self.upsample_func(lr_flow_pad)
+        hr_flow = self.scale * self.upsample_func(lr_flow)
 
         # warp hr_prev
-        hr_prev_warp = backward_warp(hr_prev, hr_flow)
+        hr_prev_warp = flow_warp(hr_prev, hr_flow.permute(0, 2, 3, 1))
 
         # compute hr_curr
         hr_curr = self.srnet(
@@ -137,7 +139,9 @@ class FRNet(BaseGenerator):
         # compute the remaining hr data
         for i in range(1, t):
             # warp hr_prev
-            hr_prev_warp = backward_warp(hr_prev, hr_flow[:, i - 1, ...])
+            hr_prev_warp = flow_warp(
+                hr_prev, hr_flow[:, i - 1, ...].permute(0, 2, 3, 1)
+            )
 
             # compute hr_curr
             hr_curr = self.srnet(

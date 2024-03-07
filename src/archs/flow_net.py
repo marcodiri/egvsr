@@ -2,8 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from archs.arch_utils import BaseGenerator
 
-class FNet(nn.Module):
+
+class FNet(BaseGenerator):
     """Optical flow estimation network"""
 
     def __init__(self, in_nc):

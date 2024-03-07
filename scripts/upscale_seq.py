@@ -1,5 +1,6 @@
 import argparse
 import os
+from time import time
 
 import torch
 import torch.nn.functional as F
@@ -45,11 +46,17 @@ parser.add_argument(
     default="png",
     help="Extension of frame images",
 )
+parser.add_argument(
+    "-o",
+    "--output_dir",
+    type=str,
+    help="Output directory",
+)
 
 args = parser.parse_args()
 generator = FRNet(
     scale=args.scale,
-).cuda(1)
+).cuda(0)
 
 checkpoint = torch.load(args.ckpt)
 state_dict = {
@@ -64,30 +71,33 @@ lr_list = []
 for p in lr_paths:
     lr = data_utils.load_img(p)
     lr = data_utils.transform(lr)
+    lr = lr[:, :270]
     lr_list.append(lr)
-lr_seq = torch.stack(lr_list).cuda(1)
+lr_seq = torch.stack(lr_list).cuda(0)
 if args.downscale:
     lr_seq = F.interpolate(lr_seq, scale_factor=1 / args.scale, mode="bicubic")
 
 generator.freeze()
+start = time()
 hr_fake = generator.infer_sequence(lr_seq)
-hr_fake = torch.clamp(hr_fake, min=-1.0, max=1.0)
+print(f"time: {time()-start}")
+# hr_fake = torch.clamp(hr_fake, min=-1.0, max=1.0)
 
 if args.generate_bicubic:
     hr_bic = F.interpolate(lr_seq, scale_factor=4, mode="bicubic")
     hr_bic = torch.clamp(hr_bic, min=-1.0, max=1.0)
-    os.makedirs("./output/bic/", exist_ok=True)
+    os.makedirs(f"./{args.output_dir}/bic/", exist_ok=True)
 
 to_image = torchvision.transforms.ToPILImage()
 
 print("Saving upscaled sequence...")
-os.makedirs("./.test/fake/", exist_ok=True)
+os.makedirs(f"./{args.output_dir}/fake/", exist_ok=True)
 
 frm_idx_lst = ["{:04d}.png".format(i + 1) for i in range(hr_fake.size(0))]
 for i in range(hr_fake.size(0)):
     hr_f = data_utils.de_transform(hr_fake[i])
-    hr_f.save(f"./.test/fake/{frm_idx_lst[i]}")
+    hr_f.save(f"./{args.output_dir}/fake/{frm_idx_lst[i]}")
 
     if args.generate_bicubic:
         hr_b = data_utils.de_transform(hr_bic[i])
-        hr_b.save(f"./.test/bic/{frm_idx_lst[i]}")
+        hr_b.save(f"./{args.output_dir}/bic/{frm_idx_lst[i]}")

@@ -22,6 +22,7 @@ class VideoFolderDataModule(L.LightningDataModule):
         validation_classes: List[str] = [],
         jump_frames=1,
         dataset_upscale_factor=4,
+        paired=True,
         batch_size=32,
         pin_memory=True,
     ):
@@ -42,11 +43,18 @@ class VideoFolderDataModule(L.LightningDataModule):
 
     def setup(self, stage: str) -> None:
         if stage == "fit":
-            self.train_set = VideoFolderPaired(**self.hparams, train=True)
-            if len(self.hparams.validation_classes) > 0:
-                self.valid_set = VideoFolderPaired(**self.hparams, train=False)
+            if self.hparams.paired:
+                self.train_set = VideoFolderPaired(**self.hparams, train=True)
+                if len(self.hparams.validation_classes) > 0:
+                    self.valid_set = VideoFolderPaired(**self.hparams, train=False)
+                else:
+                    self.valid_set = None
             else:
-                self.valid_set = None
+                self.train_set = VideoFolder(**self.hparams, train=True)
+                if len(self.hparams.validation_classes) > 0:
+                    self.valid_set = VideoFolder(**self.hparams, train=False)
+                else:
+                    self.valid_set = None
         if stage == "predict":
             self.predict_set = VideoFolder(
                 self.hparams.hr_path,

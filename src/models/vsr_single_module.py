@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from lightning.pytorch.utilities.types import STEP_OUTPUT, OptimizerLRScheduler
 from lpips import LPIPS
 
-from archs.arch_utils import BaseGenerator, backward_warp
+from archs.arch_utils import BaseGenerator, flow_warp
 from optim import define_criterion
 from optim.losses import SSIM
 
@@ -84,7 +84,7 @@ class VSRSingle(L.LightningModule):
             lr_curr = net_G_output_dict["lr_curr"]
             lr_prev = net_G_output_dict["lr_prev"]
             lr_flow = net_G_output_dict["lr_flow"]
-            lr_warp = backward_warp(lr_prev, lr_flow)
+            lr_warp = flow_warp(lr_prev, lr_flow.permute(0, 2, 3, 1))
 
             loss_warp_G = self.warp_crit(lr_warp, lr_curr)
             loss_G += self.warp_w * loss_warp_G
